@@ -181,7 +181,7 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 		var counter = 0;
 		foreach (var item in items)
 		{
-			if (string.IsNullOrEmpty(item.OriginalId))
+			if (string.IsNullOrEmpty(item.OriginalId) || item.OriginalUpdatedAt == null)
 			{
 				_brokenItems.Enqueue(item);
 				continue;

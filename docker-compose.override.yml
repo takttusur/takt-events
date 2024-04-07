@@ -1,16 +1,25 @@
 version: '3.4'
 
-services:
-  takttusur.media.api:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:80
-    ports:
-      - "3000:80"
-    volumes:
-      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
-  takttusur.media.backgroundcrawler:
-    environment:
-      - DOTNET_ENVIRONMENT=Development
-    volumes:
-      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+#services:
+
+#  takttusur.media.api:
+#    image: ${DOCKER_REGISTRY-}takttusurmediaapi
+#    build:
+#      context: .
+#      dockerfile: TaktTusur.Media.Api/Dockerfile
+#    environment:
+#      - ASPNETCORE_ENVIRONMENT=Development
+#      - ASPNETCORE_URLS=http://+:80
+#    ports:
+#      - "3000:80"
+#    volumes:
+#      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+#  takttusur.media.backgroundcrawler:
+#    environment:
+#      - DOTNET_ENVIRONMENT=Development
+#    volumes:
+#      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+#    image: ${DOCKER_REGISTRY-}takttusurmediabackgroundcrawler
+#    build:
+#      context: .
+#      dockerfile: TaktTusur.Media.Background.Worker/Dockerfile

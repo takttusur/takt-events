@@ -81,4 +81,9 @@ public class DatedBucket<T> : IIdentifiable
 		bucket.Add(item);
 		return bucket;
 	}
+
+	public static DatedBucket<T> CreateWith(long identifier, List<T> items)
+	{
+		return new DatedBucket<T>(identifier, items);
+	}
 }

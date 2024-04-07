@@ -14,7 +14,7 @@ namespace TaktTusur.Media.Core.Resources {
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
     [System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class Localization {
+    public class Localization {
         
         private static System.Resources.ResourceManager resourceMan;
         
@@ -25,7 +25,7 @@ namespace TaktTusur.Media.Core.Resources {
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static System.Resources.ResourceManager ResourceManager {
+        public static System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.Equals(null, resourceMan)) {
                     System.Resources.ResourceManager temp = new System.Resources.ResourceManager("TaktTusur.Media.Core.Resources.Localization", typeof(Localization).Assembly);
@@ -36,7 +36,7 @@ namespace TaktTusur.Media.Core.Resources {
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static System.Globalization.CultureInfo Culture {
+        public static System.Globalization.CultureInfo Culture {
             get {
                 return resourceCulture;
             }
@@ -45,9 +45,15 @@ namespace TaktTusur.Media.Core.Resources {
             }
         }
         
-        internal static string INVALID_IDENTIFIER_VALUE {
+        public static string INVALID_IDENTIFIER_VALUE {
             get {
                 return ResourceManager.GetString("INVALID_IDENTIFIER_VALUE", resourceCulture);
+            }
+        }
+        
+        public static string CONNECTION_STRING_NOT_FOUND {
+            get {
+                return ResourceManager.GetString("CONNECTION_STRING_NOT_FOUND", resourceCulture);
             }
         }
     }

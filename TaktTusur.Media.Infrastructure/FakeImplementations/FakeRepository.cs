@@ -14,9 +14,7 @@ public class FakeRepository<T> : IRepository<T> where T : IIdentifiable
 		_currentTransaction.Enqueue(() =>
 		{
 			var db = _db;
-			var key = _db.Any() ? _db.Max(d => d.Key) + 1 : 1;
-			typeof(T).GetProperty(nameof(IIdentifiable.Id))?.SetValue(entity, key);
-			db[key] = entity;
+			db[entity.Id] = entity;
 		});
 	}
 

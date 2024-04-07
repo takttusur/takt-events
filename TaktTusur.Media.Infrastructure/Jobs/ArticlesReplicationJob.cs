@@ -12,17 +12,12 @@ public class ArticlesReplicationJob(
 	IArticlesRepository repository,
 	ILogger<ArticlesReplicationJob> logger,
 	IOptionsSnapshot<ReplicationJobConfiguration> jobSettings,
-	IOptions<TextRestrictions> textRestrictions,
+	IOptionsSnapshot<TextRestrictions> textRestrictions,
 	ITextTransformer textTransformer,
 	IEnvironment environment)
 	: ReplicationJobBase<Article>(remoteSource, repository, logger, jobSettings.Get(nameof(ArticlesReplicationJob)))
 {
 	private const string BrokenArticleMessage = "The article {originalId} from {originalSource} is broken.";
-	
-	public Task Execute(IJobExecutionContext context)
-	{
-		throw new NotImplementedException();
-	}
 	
 	protected override bool TryUpdateExistingItem(Article remoteItem)
 	{
@@ -38,11 +33,11 @@ public class ArticlesReplicationJob(
 		if (bucket == null || localArticle == null) return false;
 		if (remoteItem.OriginalUpdatedAt == localArticle.OriginalUpdatedAt) return true;
 		
-		var settings = textRestrictions.Value;
+		var settings = textRestrictions.Get(nameof(ArticlesReplicationJob));
 		
 		localArticle.OriginalUpdatedAt = remoteItem.OriginalUpdatedAt;
 		localArticle.Text =
-			textTransformer.MakeShorter(remoteItem.Text, settings.ShortArticleMaxSymbolsCount, settings.ShortArticleMaxParagraphs);
+			textTransformer.MakeShorter(remoteItem.Text, settings.MaxSymbolsCount, settings.MaxParagraphCount);
 		localArticle.LastUpdated = environment.GetCurrentDateTime();
 		bucket.SetChanged();
 		repository.Update(bucket);

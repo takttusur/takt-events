@@ -21,4 +21,7 @@
     <data name="INVALID_IDENTIFIER_VALUE" xml:space="preserve">
         <value>The provided identifier has invalid value</value>
     </data>
+    <data name="CONNECTION_STRING_NOT_FOUND" xml:space="preserve">
+        <value>The connection string for {0} was not found</value>
+    </data>
 </root>

@@ -14,6 +14,7 @@ public class ArticlesRedisRepository(
 	private const string KeyPrefix = $"media:article";
 	public DatedBucket<Article>? FindBucketFor(DateTimeOffset createdAt)
 	{
-		throw new NotImplementedException();
+		var id = DatedBucket<Article>.DateToIdentifier(createdAt.Year, createdAt.Month, createdAt.Day);
+		return Find(id);
 	}
 }

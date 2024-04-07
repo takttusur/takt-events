@@ -1,10 +1,11 @@
-using Microsoft.Extensions.Logging;
+using Quartz;
+using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Entities;
 using TaktTusur.Media.Core.Exceptions;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.Settings;
 
-namespace TaktTusur.Media.Core.Services;
+namespace TaktTusur.Media.Infrastructure.Jobs;
 
 /// <summary>
 /// Base job implementation for items replication from remote resources.
@@ -13,7 +14,7 @@ namespace TaktTusur.Media.Core.Services;
 /// Entity for replication,
 /// should be <see cref="IIdentifiable"/> and <see cref="IReplicated"/>
 /// </typeparam>
-public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, IReplicated
+public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IReplicated
 {
 	protected const string StartWorkingMsg = $"{nameof(ReplicationJobBase<T>)} job is started";
 	protected const string FinishWorkingMsg = $"{nameof(ReplicationJobBase<T>)} job is finished";
@@ -21,7 +22,7 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 	protected const string DisabledMsg = $"{nameof(ReplicationJobBase<T>)} job is disabled";
 	
 	private readonly IRemoteSource<T> _remoteSource;
-	private readonly IRepository<T> _repository;
+	private readonly IRepository<DatedBucket<T>> _repository;
 	private readonly ReplicationJobConfiguration _jobConfiguration;
 	private readonly ILogger _logger;
 	private readonly Queue<T> _brokenItems = new Queue<T>();
@@ -32,7 +33,7 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 	/// <param name="jobConfiguration">Settings for the job, don't take it from DI</param>
 	protected ReplicationJobBase(
 		IRemoteSource<T> remoteSource, 
-		IRepository<T> repository,
+		IRepository<DatedBucket<T>> repository,
 		ILogger logger,
 		ReplicationJobConfiguration jobConfiguration)
 	{
@@ -42,17 +43,12 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 		_logger = logger;
 	}
 	
-	/// <summary>
-	/// Execute the job.
-	/// </summary>
-	/// <param name="token">Cancellation token</param>
-	/// <returns>Job result, success or fail</returns>
-	public virtual async Task<JobResult> ExecuteAsync(CancellationToken token)
+	public async Task Execute(IJobExecutionContext context)
 	{
 		if (!_jobConfiguration.IsEnabled)
 		{
 			_logger.LogDebug(DisabledMsg);
-			return JobResult.SuccessResult();
+			return;
 		}
 
 		try
@@ -75,27 +71,22 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 		catch (RemoteReadingException e)
 		{
 			_logger.LogWarning(e, InterruptedMsg);
-			return JobResult.ErrorResult(e.Message);
 		}
 		catch (RepositoryReadingException e)
 		{
 			_logger.LogError(e, InterruptedMsg);
-			return JobResult.ErrorResult(e.Message);
 		}
 		catch (RepositoryWritingException e)
 		{
 			_logger.LogError(e, InterruptedMsg);
-			return JobResult.ErrorResult(e.Message);
 		}
 		finally
 		{
 			Cleanup();
 			_logger.LogDebug(FinishWorkingMsg);
 		}
-		
-		return JobResult.SuccessResult();
 	}
-
+	
 	/// <summary>
 	/// The method should check is any similar item in <see cref="IRepository{TEntity}"/>.
 	/// If we have the item, it should be updated and return true.

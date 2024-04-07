@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Options;
+using Quartz;
+using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.News;
-using TaktTusur.Media.Core.Services;
 using TaktTusur.Media.Core.Settings;
 
 namespace TaktTusur.Media.Infrastructure.Jobs;
 
 public class ArticlesReplicationJob(
-	IRemoteSource<Article> remoteSource,
+	IArticlesRemoteSource remoteSource,
 	IArticlesRepository repository,
 	ILogger<ArticlesReplicationJob> logger,
 	IOptionsSnapshot<ReplicationJobConfiguration> jobSettings,
@@ -18,28 +19,58 @@ public class ArticlesReplicationJob(
 {
 	private const string BrokenArticleMessage = "The article {originalId} from {originalSource} is broken.";
 	
+	public Task Execute(IJobExecutionContext context)
+	{
+		throw new NotImplementedException();
+	}
+	
 	protected override bool TryUpdateExistingItem(Article remoteItem)
 	{
-		var localArticle = repository.GetByOriginalId(remoteItem.OriginalId, remoteItem.OriginalSource);
-		if (localArticle == null) return false;
+		if (remoteItem.OriginalCreatedAt == null)
+		{
+			// TODO:
+			return false;
+		}
+		var bucket = repository.FindBucketFor(remoteItem.OriginalCreatedAt.Value);
+		var localArticle = bucket?.Data.FirstOrDefault(x =>
+			x.OriginalId == remoteItem.OriginalId && x.OriginalSource == remoteItem.OriginalSource);
+		
+		if (bucket == null || localArticle == null) return false;
 		if (remoteItem.OriginalUpdatedAt == localArticle.OriginalUpdatedAt) return true;
+		
 		var settings = textRestrictions.Value;
 		
 		localArticle.OriginalUpdatedAt = remoteItem.OriginalUpdatedAt;
 		localArticle.Text =
 			textTransformer.MakeShorter(remoteItem.Text, settings.ShortArticleMaxSymbolsCount, settings.ShortArticleMaxParagraphs);
 		localArticle.LastUpdated = environment.GetCurrentDateTime();
-		
-		repository.Update(localArticle);
+		bucket.SetChanged();
+		repository.Update(bucket);
 		return true;
 	}
 
 	protected override void AddNewItem(Article item)
 	{
+		if (item.OriginalCreatedAt == null)
+		{
+			// TODO:
+			return;
+		}
+		var bucket = repository.FindBucketFor(item.OriginalCreatedAt.Value);
+		var created = item.OriginalCreatedAt.Value;
 		item.Text = textTransformer.MakeShorter(item.Text);
 		item.LastUpdated = environment.GetCurrentDateTime();
-		
-		repository.Add(item);
+
+		if (bucket != null)
+		{
+			bucket.Add(item);
+			repository.Update(bucket);
+		}
+		else
+		{
+			bucket = DatedBucket<Article>.CreateWith(created, item);
+			repository.Add(bucket);
+		}
 	}
 
 	protected override void ProcessBrokenItems(Queue<Article> brokenItemsQueue)

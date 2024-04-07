@@ -1,3 +1,4 @@
+using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.News;
 
@@ -12,7 +13,7 @@ public static class FakeExtensions
 
 	public static IServiceCollection AddFakeRepositories(this IServiceCollection serviceCollection)
 	{
-		return serviceCollection.AddSingleton<IRepository<Article>, FakeArticlesRepository>()
+		return serviceCollection.AddSingleton<IRepository<DatedBucket<Article>>, FakeArticlesRepository>()
 			.AddSingleton<IArticlesRepository, FakeArticlesRepository>();
 	}
 }

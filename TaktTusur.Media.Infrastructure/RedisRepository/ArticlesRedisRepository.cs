@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.News;
 using TaktTusur.Media.Infrastructure.Serializers;
@@ -7,11 +8,11 @@ namespace TaktTusur.Media.Infrastructure.RedisRepository;
 
 public class ArticlesRedisRepository(
 	IConnectionMultiplexer redisConnection,
-	IJsonSerializer<Article> jsonSerializer,
-	string objectBaseKey)
-	: BaseRedisRepository<Article>(redisConnection, jsonSerializer, objectBaseKey), IArticlesRepository
+	IJsonSerializer<DatedBucket<Article>> jsonSerializer)
+	: BaseRedisRepository<DatedBucket<Article>>(redisConnection, jsonSerializer, KeyPrefix), IArticlesRepository
 {
-	public Article? GetByOriginalId(string originalId, string originalSource)
+	private const string KeyPrefix = $"media:article";
+	public DatedBucket<Article>? FindBucketFor(DateTimeOffset createdAt)
 	{
 		throw new NotImplementedException();
 	}

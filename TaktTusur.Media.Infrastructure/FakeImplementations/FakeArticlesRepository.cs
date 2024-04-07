@@ -1,13 +1,14 @@
+using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.News;
 
 namespace TaktTusur.Media.Infrastructure.FakeImplementations;
 
-public class FakeArticlesRepository : FakeRepository<Article> ,IArticlesRepository
+public class FakeArticlesRepository : FakeRepository<DatedBucket<Article>> ,IArticlesRepository
 {
-	public Article? GetByOriginalId(string originalId, string originalSource)
+	public DatedBucket<Article>? FindBucketFor(DateTimeOffset date)
 	{
-		var article = _db.Values.FirstOrDefault(v => v.OriginalSource == originalSource && v.OriginalId == originalId);
-		return article;
+		var key = DatedBucket<Article>.DateToIdentifier(date.Year, date.Month, date.Day);
+		return _db.GetValueOrDefault(key);
 	}
 }

@@ -36,7 +36,8 @@ public class FakeArticleRemoteSource : IArticlesRemoteSource
 			LastUpdated = DateTimeOffset.UtcNow,
 			OriginalSource = "FakeSource",
 			OriginalId = originalId,
-			OriginalUpdatedAt = DateTimeOffset.UtcNow
+			OriginalUpdatedAt = DateTimeOffset.UtcNow,
+			OriginalCreatedAt = DateTimeOffset.UtcNow
 		};
 	}
 }

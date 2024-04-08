@@ -6,11 +6,11 @@ using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.News;
 using TaktTusur.Media.Core.Resources;
 using TaktTusur.Media.Core.Settings;
-using TaktTusur.Media.Infrastructure.FakeImplementations;
 using TaktTusur.Media.Infrastructure.Jobs;
 using TaktTusur.Media.Infrastructure.RedisRepository;
 using TaktTusur.Media.Infrastructure.Serializers;
 using TaktTusur.Media.Infrastructure.Services;
+using TaktTusur.Media.Infrastructure.VkSources;
 using TaktTusur.Media.Worker.Configuration;
 
 var host = Host.CreateDefaultBuilder(args)
@@ -42,8 +42,9 @@ var host = Host.CreateDefaultBuilder(args)
         services.Configure<TextRestrictions>(
             nameof(ArticlesReplicationJob),
     		configuration.GetSection(nameof(ArticlesReplicationJob)));
+        services.Configure<ArticlesVkSourceOptions>(configuration.GetSection("VkSource"));
         
-        services.AddSingleton<IArticlesRemoteSource, FakeArticleRemoteSource>();
+        services.AddScoped<IArticlesRemoteSource, ArticlesVkSource>();
         services.AddSingleton<ITextTransformer, TextTransformer>();
         services.AddSingleton<IEnvironment, EnvironmentService>();
         services.AddScoped<IArticlesRepository, ArticlesRedisRepository>();

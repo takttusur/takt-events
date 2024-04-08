@@ -56,11 +56,11 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 			_logger.LogDebug(StartWorkingMsg);
 			if (_remoteSource.IsPaginationSupported)
 			{
-				await FetchByChunks();
+				await FetchByChunks(context.CancellationToken);
 			}
 			else
 			{
-				await FetchByOneRequest();
+				await FetchByOneRequest(context.CancellationToken);
 			}
 
 			if (_brokenItems.Count != 0)
@@ -139,14 +139,14 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 	/// If <see cref="IRemoteSource{TEntity}"/> supports fetching by pages,
 	/// items will be parsed by chunks.
 	/// </summary>
-	private async Task FetchByChunks()
+	private async Task FetchByChunks(CancellationToken token)
 	{
 		var skip = 0;
 		const int take = 10;
 		int total;
 		do
 		{
-			var (items, totalCount) = await _remoteSource.GetListAsync(skip, take);
+			var (items, totalCount) = await _remoteSource.GetListAsync(skip, take, token);
 			total = totalCount;
 			
 			await ProcessItems(items);
@@ -159,9 +159,9 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 	/// If <see cref="IRemoteSource{TEntity}"/> doesn't support
 	/// reading by chunks, and provides only one response - use this to read it.
 	/// </summary>
-	private async Task FetchByOneRequest()
+	private async Task FetchByOneRequest(CancellationToken token)
 	{
-		var items = await _remoteSource.GetListAsync();
+		var items = await _remoteSource.GetListAsync(token);
 		if (items.Count > _jobConfiguration.MaxReplicatedItems)
 		{
 			items = items
@@ -186,7 +186,8 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 				_brokenItems.Enqueue(item);
 				continue;
 			}
-
+			
+			// TODO: call save only if we have changes 
 			if (!TryUpdateExistingItem(item))
 			{
 				AddNewItem(item);	

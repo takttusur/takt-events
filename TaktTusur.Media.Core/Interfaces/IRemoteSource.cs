@@ -16,7 +16,7 @@ public interface IRemoteSource<TEntity>
 	/// Get all data by one request, but the amount can be limited.
 	/// </summary>
 	/// <returns></returns>
-	public Task<List<TEntity>> GetListAsync();
+	public Task<List<TEntity>> GetListAsync(CancellationToken token);
 
 	/// <summary>
 	/// Get paginated list of entities.
@@ -24,5 +24,5 @@ public interface IRemoteSource<TEntity>
 	/// <param name="skip">Skip several entities</param>
 	/// <param name="take">Take several entities</param>
 	/// <returns>Entities and amount of it</returns>
-	public Task<(List<TEntity> entities, int totalCount)> GetListAsync(int skip, int take);
+	public Task<(List<TEntity> entities, int totalCount)> GetListAsync(int skip, int take, CancellationToken token);
 }

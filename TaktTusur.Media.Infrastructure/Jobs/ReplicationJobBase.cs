@@ -217,6 +217,7 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 		try
 		{
 			f(item);
+			return true;
 		}
 		catch (Exception e)
 		{

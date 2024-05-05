@@ -15,4 +15,6 @@ public class Article : IIdentifiable, IReplicated
     public string? OriginalId { get; set; }
     
     public DateTimeOffset? OriginalUpdatedAt { get; set; }
+    
+    public DateTimeOffset? OriginalCreatedAt { get; set; }
 }

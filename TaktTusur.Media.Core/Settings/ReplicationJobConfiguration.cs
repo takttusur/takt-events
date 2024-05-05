@@ -1,6 +1,6 @@
 namespace TaktTusur.Media.Core.Settings;
 
-public class ReplicationJobSettings : JobSettingsBase
+public class ReplicationJobConfiguration : JobConfigurationBase
 {
 	public int MaxReplicatedItems { get; set; }
 	

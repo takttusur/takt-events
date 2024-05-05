@@ -6,7 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-TaktTusur.Media.BackgroundCrawler-57392fb7-7c4f-4520-b58f-7cd38e5b1017</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <RootNamespace>TaktTusur.Media.BackgroundCrawler</RootNamespace>
     <LangVersion>12</LangVersion>
   </PropertyGroup>
 

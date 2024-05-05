@@ -1,23 +1,11 @@
 version: '3.4'
 
-services:
-  takttusur.media.api:
-    image: ${DOCKER_REGISTRY-}takttusurmediaapi
-    build:
-      context: .
-      dockerfile: TaktTusur.Media.Api/Dockerfile
-
-  takttusur.media.backgroundcrawler:
-    image: ${DOCKER_REGISTRY-}takttusurmediabackgroundcrawler
-    build:
-      context: .
-      dockerfile: TaktTusur.Media.Background.Worker/Dockerfile
-      
+services:    
   takttusur.redis:
     image: redis:7.2.4-alpine
     ports:
       - '6379:6379'
-    command: redis-server --save 20 1 --loglevel warning --requirepass takttusur
+    command: redis-server --save 20 1 --loglevel warning
     volumes:
       - takttusur-redis:/data
         

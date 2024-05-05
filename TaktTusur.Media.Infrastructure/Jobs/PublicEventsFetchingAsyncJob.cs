@@ -3,7 +3,7 @@ using TaktTusur.Media.Core.Interfaces;
 
 namespace TaktTusur.Media.Infrastructure.Jobs;
 
-public class PublicEventsFetchingAsyncJob : IAsyncJob
+public class PublicEventsFetchingAsyncJob 
 {
 	public Task<JobResult> ExecuteAsync(CancellationToken token)
 	{

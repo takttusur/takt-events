@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using StackExchange.Redis;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Infrastructure.Serializers;
@@ -10,7 +11,7 @@ namespace TaktTusur.Media.Infrastructure.RedisRepository;
 /// Use transactions approach, don't forget to call Save finally.
 /// </summary>
 /// <typeparam name="T">DB Entity</typeparam>
-public abstract class BaseRedisRepository<T> : IRepository<T> where T: IIdentifiable
+public abstract class BaseRedisRepository<T> : IRepository<T> where T: class,IIdentifiable
 {
 	protected const string KeyDelimiter = ":";
 	private readonly IJsonSerializer<T> _jsonSerializer;
@@ -39,6 +40,15 @@ public abstract class BaseRedisRepository<T> : IRepository<T> where T: IIdentifi
 		_objectBaseKey = objectBaseKey;
 		_db = redisConnection.GetDatabase();
 	}
+
+	protected T? Find(long id)
+	{
+		var key = GetEntityKey(id);
+		var value = _db.StringGet(key);
+		if (value.IsNullOrEmpty) return null;
+
+		return _jsonSerializer.Deserialize(value!);
+	}
 	
 	public virtual void Add(T entity)
 	{
@@ -49,7 +59,7 @@ public abstract class BaseRedisRepository<T> : IRepository<T> where T: IIdentifi
 
 		var key = new RedisKey(GetEntityKey(entity));
 		var value = new RedisValue(_jsonSerializer.Serialize(entity));
-
+		
 		var task = _transaction!.StringSetAsync(key, value);
 		task.ConfigureAwait(false);
 		_unprocessedChanges.Add(task);
@@ -117,7 +127,7 @@ public abstract class BaseRedisRepository<T> : IRepository<T> where T: IIdentifi
 		return GetEntityKey(identifiable.Id);
 	}
 	
-	private string GetEntityKey(long id)
+	protected string GetEntityKey(long id)
 	{
 		return GetFullKey(id.ToString());
 	}

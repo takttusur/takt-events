@@ -7,4 +7,6 @@ public interface IReplicated
 	public string? OriginalId { get; }
 	
 	public DateTimeOffset? OriginalUpdatedAt { get; }
+	
+	public DateTimeOffset? OriginalCreatedAt { get; }
 }

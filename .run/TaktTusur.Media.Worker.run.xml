@@ -1,13 +1,16 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="TaktTusur.Media.Background.Worker" type="DotNetProject" factoryName=".NET Project">
-    <option name="EXE_PATH" value="$PROJECT_DIR$/TaktTusur.Media.Background.Worker/bin/Debug/net8.0/TaktTusur.Media.Background.Worker" />
+  <configuration default="false" name="TaktTusur.Media.Worker" type="DotNetProject" factoryName=".NET Project">
+    <option name="EXE_PATH" value="$PROJECT_DIR$/TaktTusur.Media.Worker/bin/Debug/net8.0/TaktTusur.Media.Worker" />
     <option name="PROGRAM_PARAMETERS" value="" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/TaktTusur.Media.Background.Worker" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/TaktTusur.Media.Worker" />
     <option name="PASS_PARENT_ENVS" value="1" />
+    <envs>
+      <env name="DOTNET_ENVIRONMENT" value="Development" />
+    </envs>
     <option name="USE_EXTERNAL_CONSOLE" value="0" />
     <option name="USE_MONO" value="0" />
     <option name="RUNTIME_ARGUMENTS" value="" />
-    <option name="PROJECT_PATH" value="$PROJECT_DIR$/TaktTusur.Media.Background.Worker/TaktTusur.Media.Background.Worker.csproj" />
+    <option name="PROJECT_PATH" value="$PROJECT_DIR$/TaktTusur.Media.Worker/TaktTusur.Media.Worker.csproj" />
     <option name="PROJECT_EXE_PATH_TRACKING" value="1" />
     <option name="PROJECT_ARGUMENTS_TRACKING" value="1" />
     <option name="PROJECT_WORKING_DIRECTORY_TRACKING" value="1" />

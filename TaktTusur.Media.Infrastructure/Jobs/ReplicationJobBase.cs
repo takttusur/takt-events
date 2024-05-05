@@ -1,10 +1,10 @@
-using Microsoft.Extensions.Logging;
-using TaktTusur.Media.Core.Entities;
+using Quartz;
+using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Exceptions;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.Settings;
 
-namespace TaktTusur.Media.Core.Services;
+namespace TaktTusur.Media.Infrastructure.Jobs;
 
 /// <summary>
 /// Base job implementation for items replication from remote resources.
@@ -13,7 +13,7 @@ namespace TaktTusur.Media.Core.Services;
 /// Entity for replication,
 /// should be <see cref="IIdentifiable"/> and <see cref="IReplicated"/>
 /// </typeparam>
-public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, IReplicated
+public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IReplicated
 {
 	protected const string StartWorkingMsg = $"{nameof(ReplicationJobBase<T>)} job is started";
 	protected const string FinishWorkingMsg = $"{nameof(ReplicationJobBase<T>)} job is finished";
@@ -21,38 +21,33 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 	protected const string DisabledMsg = $"{nameof(ReplicationJobBase<T>)} job is disabled";
 	
 	private readonly IRemoteSource<T> _remoteSource;
-	private readonly IRepository<T> _repository;
-	private readonly ReplicationJobSettings _jobSettings;
+	private readonly IRepository<DatedBucket<T>> _repository;
+	private readonly ReplicationJobConfiguration _jobConfiguration;
 	private readonly ILogger _logger;
 	private readonly Queue<T> _brokenItems = new Queue<T>();
 	
 	/// <param name="remoteSource">Remote source of entity</param>
 	/// <param name="repository">Repository for <see cref="T"/> </param>
 	/// <param name="logger">Logger</param>
-	/// <param name="jobSettings">Settings for the job, don't take it from DI</param>
+	/// <param name="jobConfiguration">Settings for the job, don't take it from DI</param>
 	protected ReplicationJobBase(
 		IRemoteSource<T> remoteSource, 
-		IRepository<T> repository,
+		IRepository<DatedBucket<T>> repository,
 		ILogger logger,
-		ReplicationJobSettings jobSettings)
+		ReplicationJobConfiguration jobConfiguration)
 	{
 		_remoteSource = remoteSource;
 		_repository = repository;
-		_jobSettings = jobSettings;
+		_jobConfiguration = jobConfiguration;
 		_logger = logger;
 	}
 	
-	/// <summary>
-	/// Execute the job.
-	/// </summary>
-	/// <param name="token">Cancellation token</param>
-	/// <returns>Job result, success or fail</returns>
-	public virtual async Task<JobResult> ExecuteAsync(CancellationToken token)
+	public async Task Execute(IJobExecutionContext context)
 	{
-		if (!_jobSettings.IsEnabled)
+		if (!_jobConfiguration.IsEnabled)
 		{
 			_logger.LogDebug(DisabledMsg);
-			return JobResult.SuccessResult();
+			return;
 		}
 
 		try
@@ -60,11 +55,11 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 			_logger.LogDebug(StartWorkingMsg);
 			if (_remoteSource.IsPaginationSupported)
 			{
-				await FetchByChunks();
+				await FetchByChunks(context.CancellationToken);
 			}
 			else
 			{
-				await FetchByOneRequest();
+				await FetchByOneRequest(context.CancellationToken);
 			}
 
 			if (_brokenItems.Count != 0)
@@ -75,27 +70,22 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 		catch (RemoteReadingException e)
 		{
 			_logger.LogWarning(e, InterruptedMsg);
-			return JobResult.ErrorResult(e.Message);
 		}
 		catch (RepositoryReadingException e)
 		{
 			_logger.LogError(e, InterruptedMsg);
-			return JobResult.ErrorResult(e.Message);
 		}
 		catch (RepositoryWritingException e)
 		{
 			_logger.LogError(e, InterruptedMsg);
-			return JobResult.ErrorResult(e.Message);
 		}
 		finally
 		{
 			Cleanup();
 			_logger.LogDebug(FinishWorkingMsg);
 		}
-		
-		return JobResult.SuccessResult();
 	}
-
+	
 	/// <summary>
 	/// The method should check is any similar item in <see cref="IRepository{TEntity}"/>.
 	/// If we have the item, it should be updated and return true.
@@ -148,14 +138,14 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 	/// If <see cref="IRemoteSource{TEntity}"/> supports fetching by pages,
 	/// items will be parsed by chunks.
 	/// </summary>
-	private async Task FetchByChunks()
+	private async Task FetchByChunks(CancellationToken token)
 	{
 		var skip = 0;
 		const int take = 10;
 		int total;
 		do
 		{
-			var (items, totalCount) = await _remoteSource.GetListAsync(skip, take);
+			var (items, totalCount) = await _remoteSource.GetListAsync(skip, take, token);
 			total = totalCount;
 			
 			await ProcessItems(items);
@@ -168,21 +158,22 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 	/// If <see cref="IRemoteSource{TEntity}"/> doesn't support
 	/// reading by chunks, and provides only one response - use this to read it.
 	/// </summary>
-	private async Task FetchByOneRequest()
+	private async Task FetchByOneRequest(CancellationToken token)
 	{
-		var items = await _remoteSource.GetListAsync();
-		if (items.Count > _jobSettings.MaxReplicatedItems)
+		var items = await _remoteSource.GetListAsync(token);
+		if (items.Count > _jobConfiguration.MaxReplicatedItems)
 		{
 			items = items
 				.OrderBy(a => a.OriginalUpdatedAt)
-				.Take(_jobSettings.MaxReplicatedItems)
+				.Take(_jobConfiguration.MaxReplicatedItems)
 				.ToList();
 		}
 		await ProcessItems(items);
 	}
 	
 	/// <summary>
-	/// 
+	/// Process each item(update or add to db). Items will be processed one by one,
+	/// in case of exception the item will be put to broken items queue.
 	/// </summary>
 	/// <param name="items"></param>
 	private async Task ProcessItems(List<T> items)
@@ -190,20 +181,26 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 		var counter = 0;
 		foreach (var item in items)
 		{
-			if (string.IsNullOrEmpty(item.OriginalId))
+			if (string.IsNullOrEmpty(item.OriginalId) || item.OriginalUpdatedAt == null)
 			{
 				_brokenItems.Enqueue(item);
 				continue;
 			}
 
-			if (!TryUpdateExistingItem(item))
+			var result = WithCatch((i) =>
 			{
-				AddNewItem(item);	
-			}
+				if (!TryUpdateExistingItem(i))
+				{
+					AddNewItem(i);
+				}
+			}, item);
 
-			counter++;
+			if (result)
+			{
+				counter++;
+			}
 			
-			if (counter < _jobSettings.CommitBuffer) continue;
+			if (counter < _jobConfiguration.CommitBuffer) continue;
 			
 			await _repository.SaveAsync();
 			counter = 0;
@@ -213,5 +210,20 @@ public abstract class ReplicationJobBase<T> : IAsyncJob where T: IIdentifiable, 
 		{
 			await _repository.SaveAsync();
 		}
+	}
+
+	private bool WithCatch(Action<T> f, T item)
+	{
+		try
+		{
+			f(item);
+			return true;
+		}
+		catch (Exception e)
+		{
+			_logger.LogDebug(e, $"Exception on adding item {item}");
+			_brokenItems.Enqueue(item);
+		}
+		return false;
 	}
 }

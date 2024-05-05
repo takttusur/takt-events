@@ -1,17 +1,18 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Options;
+using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.News;
-using TaktTusur.Media.Core.Services;
 using TaktTusur.Media.Core.Settings;
 
 namespace TaktTusur.Media.Infrastructure.Jobs;
 
 public class ArticlesReplicationJob(
-	IRemoteSource<Article> remoteSource,
+	IArticlesRemoteSource remoteSource,
 	IArticlesRepository repository,
 	ILogger<ArticlesReplicationJob> logger,
-	IOptionsSnapshot<ReplicationJobSettings> jobSettings,
-	IOptions<TextRestrictions> textRestrictions,
+	IOptionsSnapshot<ReplicationJobConfiguration> jobSettings,
+	IOptionsSnapshot<TextRestrictions> textRestrictions,
 	ITextTransformer textTransformer,
 	IEnvironment environment)
 	: ReplicationJobBase<Article>(remoteSource, repository, logger, jobSettings.Get(nameof(ArticlesReplicationJob)))
@@ -20,26 +21,49 @@ public class ArticlesReplicationJob(
 	
 	protected override bool TryUpdateExistingItem(Article remoteItem)
 	{
-		var localArticle = repository.GetByOriginalId(remoteItem.OriginalId, remoteItem.OriginalSource);
-		if (localArticle == null) return false;
+		if (remoteItem.OriginalCreatedAt == null)
+		{
+			throw new ValidationException($"The object {remoteItem} doesn't have {nameof(Article.OriginalCreatedAt)} field");
+		}
+		var bucket = repository.FindBucketFor(remoteItem.OriginalCreatedAt.Value);
+		var localArticle = bucket?.Data.FirstOrDefault(x =>
+			x.OriginalId == remoteItem.OriginalId && x.OriginalSource == remoteItem.OriginalSource);
+		
+		if (bucket == null || localArticle == null) return false;
 		if (remoteItem.OriginalUpdatedAt == localArticle.OriginalUpdatedAt) return true;
-		var settings = textRestrictions.Value;
+		
+		var settings = textRestrictions.Get(nameof(ArticlesReplicationJob));
 		
 		localArticle.OriginalUpdatedAt = remoteItem.OriginalUpdatedAt;
 		localArticle.Text =
-			textTransformer.MakeShorter(remoteItem.Text, settings.ShortArticleMaxSymbolsCount, settings.ShortArticleMaxParagraphs);
+			textTransformer.MakeShorter(remoteItem.Text, settings.MaxSymbolsCount, settings.MaxParagraphCount);
 		localArticle.LastUpdated = environment.GetCurrentDateTime();
-		
-		repository.Update(localArticle);
+		bucket.SetChanged();
+		repository.Update(bucket);
 		return true;
 	}
 
 	protected override void AddNewItem(Article item)
 	{
+		if (item.OriginalCreatedAt == null)
+		{
+			throw new ValidationException($"The item {item} doesn't have {nameof(Article.OriginalCreatedAt)} field");
+		}
+		var bucket = repository.FindBucketFor(item.OriginalCreatedAt.Value);
+		var created = item.OriginalCreatedAt.Value;
 		item.Text = textTransformer.MakeShorter(item.Text);
 		item.LastUpdated = environment.GetCurrentDateTime();
-		
-		repository.Add(item);
+
+		if (bucket != null)
+		{
+			bucket.Add(item);
+			repository.Update(bucket);
+		}
+		else
+		{
+			bucket = DatedBucket<Article>.CreateWith(created, item);
+			repository.Add(bucket);
+		}
 	}
 
 	protected override void ProcessBrokenItems(Queue<Article> brokenItemsQueue)

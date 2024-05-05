@@ -47,8 +47,7 @@ public class ArticlesReplicationJob(
 	{
 		if (item.OriginalCreatedAt == null)
 		{
-			// TODO:
-			return;
+			throw new ValidationException($"The item {item} doesn't have {nameof(Article.OriginalCreatedAt)} field");
 		}
 		var bucket = repository.FindBucketFor(item.OriginalCreatedAt.Value);
 		var created = item.OriginalCreatedAt.Value;

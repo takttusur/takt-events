@@ -1,5 +1,5 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Options;
-using Quartz;
 using TaktTusur.Media.Core.DatedBucket;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.News;
@@ -23,8 +23,7 @@ public class ArticlesReplicationJob(
 	{
 		if (remoteItem.OriginalCreatedAt == null)
 		{
-			// TODO:
-			return false;
+			throw new ValidationException($"The object {remoteItem} doesn't have {nameof(Article.OriginalCreatedAt)} field");
 		}
 		var bucket = repository.FindBucketFor(remoteItem.OriginalCreatedAt.Value);
 		var localArticle = bucket?.Data.FirstOrDefault(x =>

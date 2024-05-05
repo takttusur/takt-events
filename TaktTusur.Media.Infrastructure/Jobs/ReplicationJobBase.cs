@@ -1,6 +1,5 @@
 using Quartz;
 using TaktTusur.Media.Core.DatedBucket;
-using TaktTusur.Media.Core.Entities;
 using TaktTusur.Media.Core.Exceptions;
 using TaktTusur.Media.Core.Interfaces;
 using TaktTusur.Media.Core.Settings;
@@ -173,7 +172,8 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 	}
 	
 	/// <summary>
-	/// 
+	/// Process each item(update or add to db). Items will be processed one by one,
+	/// in case of exception the item will be put to broken items queue.
 	/// </summary>
 	/// <param name="items"></param>
 	private async Task ProcessItems(List<T> items)
@@ -186,14 +186,19 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 				_brokenItems.Enqueue(item);
 				continue;
 			}
-			
-			// TODO: call save only if we have changes 
-			if (!TryUpdateExistingItem(item))
-			{
-				AddNewItem(item);	
-			}
 
-			counter++;
+			var result = WithCatch((i) =>
+			{
+				if (!TryUpdateExistingItem(i))
+				{
+					AddNewItem(i);
+				}
+			}, item);
+
+			if (result)
+			{
+				counter++;
+			}
 			
 			if (counter < _jobConfiguration.CommitBuffer) continue;
 			
@@ -205,5 +210,19 @@ public abstract class ReplicationJobBase<T> : IJob where T: IIdentifiable, IRepl
 		{
 			await _repository.SaveAsync();
 		}
+	}
+
+	private bool WithCatch(Action<T> f, T item)
+	{
+		try
+		{
+			f(item);
+		}
+		catch (Exception e)
+		{
+			_logger.LogDebug(e, $"Exception on adding item {item}");
+			_brokenItems.Enqueue(item);
+		}
+		return false;
 	}
 }
